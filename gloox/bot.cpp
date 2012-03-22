@@ -1,5 +1,5 @@
 //A basic gloox tutorial by Anders Schau Knatten
-//Read more at http://blog.knatten.org/2012/03/22/basic-gloox-tutorial/
+//Read more at http://blog.knatten.org/2012/03/23/basic-gloox-tutorial/
 //To compile on Linux: g++ -o bot bot.cpp -lgloox -lpthread
 #include <iostream>
 #include <string>
@@ -44,7 +44,6 @@ ostream& operator<<(ostream& os, const Message& stanza) {
 
 class ConnListener : public ConnectionListener {
 public:
-    ConnListener() {}
     virtual void onConnect() {
         cout << "ConnListener::onConnect()" << endl;
     }
@@ -60,7 +59,7 @@ public:
 class Bot : public MessageHandler {
 public:
     Bot() {
-        JID jid( "bot@localhost" );
+        JID jid("bot@localhost");
         client = new Client( jid, "botpwd" );
         connListener = new ConnListener();
         client->registerMessageHandler( this );
@@ -74,9 +73,9 @@ public:
     }
  
     virtual void handleMessage( const Message& stanza, MessageSession* session = 0 ) {
-         cout << "Received message: " << stanza << endl;
-          Message msg(stanza.subtype(), stanza.from(), "Tell me more about " + stanza.body() );
-          client->send( msg );
+        cout << "Received message: " << stanza << endl;
+        Message msg(Message::Chat, stanza.from(), "Tell me more about " + stanza.body() );
+        client->send( msg );
     }
  
 private:
