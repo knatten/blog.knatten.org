@@ -45,6 +45,16 @@ public:
     }
 //snippetysnip_end
 
+    void process_static(char data, int iteration)
+    {
+        cout << "Iteration " << iteration << " ";
+        static Helper* h = nullptr; 
+        if (h == nullptr)
+            h = new Helper(data);
+        //Use the helper object
+        cout << endl;
+    }
+
 };
 
 //snippetysnip_begin:main
@@ -66,6 +76,15 @@ int main()
         thread([&]() {
             for (size_t i = 0; i < 3; ++i) {
                 processor.process_threadlocal(thread_id, i);
+            }
+        }).join();
+    }
+
+    cout << endl << "STATIC:" << endl;
+    for (char thread_id = 'A'; thread_id <= 'C'; ++thread_id) {
+        thread([&]() {
+            for (size_t i = 0; i < 3; ++i) {
+                processor.process_static(thread_id, i);
             }
         }).join();
     }
