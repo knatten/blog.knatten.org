@@ -28,6 +28,7 @@ public:
     {
             cout << "Member is copied" << endl;
             m = rhs.m;
+            return *this;
     }
 
     int m;
@@ -52,7 +53,7 @@ int main()
 {
     Derived d;
     cout << d.p << " " << d.foo << " " << d.bar << " " << d.m.m << endl;
-};
+}
 
 //snippetysnip_end
 
