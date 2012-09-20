@@ -56,4 +56,4 @@ int main()
     //snippetysnip_end
 }
 
-//:!g++ -std=c++0x -o main main.cpp && ./main
+//:!g++ -o main main.cpp && ./main
