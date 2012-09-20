@@ -51,4 +51,4 @@ int main()
 };
 
 
-//!g++ -std=c++0x -o main2 main2.cpp && ./main2
+//!g++ -std=c++0x -o cleaned cleaned.cpp && ./cleaned
