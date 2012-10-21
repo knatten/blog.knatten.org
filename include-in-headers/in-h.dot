@@ -1,0 +1,25 @@
+digraph hier {
+    node [shape=box]
+    edge [style=dashed, dir=back]
+    subgraph {
+        h1 [label="file1.h\n0.2s : 0.2s", color="red"]
+        h2 [label="file2.h\n0.5s : 0.5s"]
+        h3 [label="file3.h\n0.1s : 0.1s"]
+        h4 [label="file4.h\n0.3s : 1.1s", color="red"]
+        h5 [label="file5.h\n0.1s : 1:2s", color="red"]
+    }
+    subgraph {
+        node [fillcolor="#DDDDFF", style=filled]
+        c5 [label="file5.cpp\n0.5s : 1.7s", color="red"]
+        c6 [label="file6.cpp\n0.4s : 1.6s", color="red"]
+        c7 [label="file7.cpp\n1.0s : 2.2s", color="red"]
+    }
+
+    h1->h4
+    h2->h4
+    h3->h4
+    h4->h5
+    h5->c5
+    h5->c6
+    h5->c7
+}
