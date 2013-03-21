@@ -20,11 +20,11 @@ int main() {
 	print_copies("1: Constructing");
 	C c2(c1);
 	print_copies("2: Copy constructing");
-	C c4 = getTemporaryC();
+	C c3 = getTemporaryC();
 	print_copies("3: Returning a temporary");
-	C c5 = getLocalC();
+	C c4 = getLocalC();
 	print_copies("4: Returning a local");
-	C c6 = getDelegatedC();
+	C c5 = getDelegatedC();
 	print_copies("5: Returning through a delegate");
 	vector<C> v = getVectorOfC();
 	print_copies("6: Returning a local vector");
