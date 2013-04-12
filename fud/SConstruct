@@ -1,0 +1,6 @@
+env = Environment()
+env.Replace(CCFLAGS=['-std=c++0x', '-Wall', '-Wextra', '-Weffc++'], CXX='g++-4.7')
+#env.Replace(LIBS=['pthread', 'gtest', 'gtest_main'])
+extensions = ('*.c', '*.cpp')
+files = [Glob(ext) for ext in extensions]
+env.Program('main', files)
