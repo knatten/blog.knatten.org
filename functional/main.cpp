@@ -75,7 +75,7 @@ namespace fast {
     std::vector<double> squared(std::vector<double>&& v)
     {
         std::transform(v.begin(), v.end(), v.begin(), [](double d) { return d*d; });
-        return v;
+        return std::move(v);
     }
 
     double rms(std::vector<double>&& v)
