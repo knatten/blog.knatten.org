@@ -1,0 +1,129 @@
+<em>Warning: Even though most of the code in this post is C++, its main point is about the programming language Rust. I do however find Rust a very interesting language, as it is a systems programming language like C++, just a lot more safe.</em>
+
+One thing that's always hard to get right, is error handling. Many functions can simply return a value, and we know we'll always get a valid value. Many other functions however, can only promise that they'll <em>try</em> to get us a value. Maybe it's connecting to something over the network, reading a file, parsing user input etc.
+
+This post examines a few ways to handle errors in C++, and concludes with how it's done in Rust.
+
+Let's first look at a few ways to handle functions that might not succeed in C++. For simplicity, all our functions will attempt to return a pointer to an int. In a real program, this could instead be a pointer to a database record, a customer object or whatever.
+
+I've included the output from running this code on my machine in comments. Note however that we in many cases print 0x0 as a pointer value and segfault as the result of de-referencing it. This is just accidental, and the actual behaviour is undefined. I'll get back to that after the examples.
+
+<h3>Return null</h3>
+One common pattern is to return a null pointer if the function failed. Below we have crafted a small function which will successfully return a pointer the first time it's called, but will return null the second time:
+
+<!-- snippetysnip:cpp.cpp:get:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
+
+[sourcecode language="cpp"]
+//Returns a pointer the first time, then returns null
+int* get() {
+    static int i = 0;
+    return i++ == 0 ? &i : nullptr;
+}
+[/sourcecode]
+
+<!-- snippetysnip_end:cpp.cpp:get -->
+
+
+And this is how it would be used:
+
+<!-- snippetysnip:cpp.cpp:call_get:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
+
+[sourcecode language="cpp"]
+    int* success = get();
+    cout << success << endl; //0x101d78118
+    cout << *success << endl; //1
+
+    int* failure = get();
+    cout << failure << endl; //0x0
+    cout << *failure << endl; //segfault!
+[/sourcecode]
+
+<!-- snippetysnip_end:cpp.cpp:call_get -->
+
+Note that it's now up to the caller to check whether the returned value is null. This can be easy to forget. And more importantly, there's no way to look at the function signature and know whether this function is guaranteed to return a value, or whether it might return null. In addition to the possibility of forgetting to check for null, this can also lead to us checking for null <em>too often</em>, even in places where we didn't really need to, "just to be sure".
+
+<h3>Return in argument</h3>
+Another common pattern is to return an error code or success status from the function, and return the actual value in an argument.
+
+The function below takes a reference to a pointer, and returns whether it succeeded or not. On the first call it updates the pointer to point at the result, and return true. On the second call it doesn't update the pointer, and returns false:
+
+<!-- snippetysnip:cpp.cpp:get_in_argument:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
+
+[sourcecode language="cpp"]
+//Returns ok and updates the result pointer the first time, then returns false and does not update result pointer
+bool get_in_argument(int*& result) {
+    static int i = 0;
+    if (i++ == 0) {
+        result = &i;
+        return true;
+    }
+    return false;
+}
+[/sourcecode]
+
+<!-- snippetysnip_end:cpp.cpp:get_in_argument -->
+
+And this is how it would be used:
+
+<!-- snippetysnip:cpp.cpp:call_get_in_argument:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
+
+[sourcecode language="cpp"]
+    int* success;
+    bool ok = get_in_argument(success);
+    cout << ok << " " << success << endl; //true 0x10d3ce11c
+    cout << *success << endl; //1
+
+    int* failure = nullptr;
+    bool ok2 = get_in_argument(failure);
+    cout << ok2 << " " << failure << endl;  //false 0x0
+    cout << *failure << endl; //segfault!
+[/sourcecode]
+
+<!-- snippetysnip_end:cpp.cpp:call_get_in_argument -->
+
+Compared to <code>int* get()</code>, this function signature has the advantage of clearly communicating that the function might not be able to return a valid pointer. The calling code does however not read as nice in my opinion, as I prefer variables to be properly initialised at their point of declaration.
+
+<h4>Interlude: Null pointers and segfaults</h4>
+When running this program, you'll typically see the behaviour I've outlined in the comments. The un-initialized pointer points to <code>0x0</code>, and dereferencing it results in a segfault. In reality, this behaviour is undefined, and anything could happen. Especially, if the code is a bit more complicated than in these examples, the uninitialized variable could for instance point to a valid memory address, and instead of a segfault, we'd get a valid, but wrong value! This can lead to bugs that are way harder to track down, and don't manifest until way later in the program's execution.
+
+<h3>Exceptions</h3>
+No post about error handling would be complete without mentioning exceptions. 
+
+The function below returns the interesting value through its normal return value, or throws an exception if it fails. On the first call it returns a pointer to the int, on the second call it throws an exception, and never returns at all.
+
+<!-- snippetysnip:cpp.cpp:get_or_throw:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
+
+[sourcecode language="cpp"]
+int* get_or_throw() {
+    static int i = 0;
+    if (i++ > 0) {
+        throw std::exception();
+    }
+    return &i;
+}
+[/sourcecode]
+
+<!-- snippetysnip_end:cpp.cpp:get_or_throw -->
+
+And this is how it would be used:
+
+<!-- snippetysnip:cpp.cpp:call_get_or_throw:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
+
+[sourcecode language="cpp"]
+    int* success = get_or_throw();
+    cout << success << endl; //0x101d78118
+    cout << *success << endl; //1
+
+    int* failure = get_or_throw(); //exception
+    cout << failure << endl; //never reached
+    cout << *failure << endl; //never reached
+[/sourcecode]
+
+<!-- snippetysnip_end:cpp.cpp:call_get_or_throw -->
+
+This has the advantage that we can't really forget to check for failure and continue executing the program with an uninitialized variable. There is however no way for us to see from the function signature that it might throw an exception, and there's nothing forcing us to actually handle it. We can compile and start this program just fine, and only when the users run it will they get an exception. If we didn't handle it, the program will crash. That's however a lot safer than continuing to run with uninitialized / wrongly initialized memory!
+
+<h3>Optional results</h3>
+Many languages/libraries provide an <code>Optional</code>, <code>Option</code> or <code>Result</code> type, which can either hold a result, or be empty. (In some cases they can also store an error if there was no result.)
+
+Let's look at one very simple example of such a type:
