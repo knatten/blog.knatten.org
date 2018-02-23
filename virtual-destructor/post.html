@@ -1,0 +1,57 @@
+I got a user submitted question to <a href="http://cppquiz.org">CppQuiz.org</a> the other day where the contributor had gotten the answer wrong, and I didn't notice at first. The question was about non-virtual destructors:
+
+<!-- snippetysnip:cpp.cpp:question:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
+
+[sourcecode language="cpp"]
+#include &lt;iostream&gt;
+
+struct B {
+  B() {
+    std::cout << 'b';
+  }
+  ~B() {
+    std::cout << 'B';
+  }
+};
+
+struct D : B {
+  D() {
+    std::cout << 'd';
+  }
+  ~D() {
+    std::cout << 'D';
+  }
+};
+
+int main() {
+  B* p = new D;
+  delete p;
+}
+[/sourcecode]
+
+<!-- snippetysnip_end:cpp.cpp:question -->
+
+As usual on CppQuiz, the objective is to figure out the output of the program, according to the C++ standard. Before continuing, please try to find the answer yourself!
+
+<h3>What does the standard say?</h3>
+Did you reply <code>bdB</code>? So did the person who contributed the question, and I initially went "yep, that seems logical". It does indeed seem logical that these functions are called, but what exactly happens when we fail to destroy the derived part of an object? Let's have a look at §5.3.5/3 in the C++11 standard:
+
+<blockquote>
+if the static type of the object to be deleted is different from its dynamic type, the static type shall be a base class of the dynamic type of the object to be deleted and the static type shall have a virtual destructor or the behavior is undefined. 
+</blockquote>
+
+The static type here is <code>B</code>, which is indeed a base class of the dynamic type <code>D</code>. The static type <code>B</code> does however not have a virtual destructor, so the behavior is undefined. (I have yet to see a compiler who doesn't print <code>bdB</code> though.)
+
+So why is this undefined behavior? It would be hard for the standard to specify exactly what happens when an object is not properly destroyed.
+
+In practice, most compilers will probably go with the normal rules for virtual functions, print <code>bdB</code>, and simply not destroy the <code>D</code> part of the object. But since the behavior is undefined, there's no guarantee for this.
+
+One could argue that even if the result of not destroying <code>D</code> properly is undefined, the standard could still mandate which destructor(s) actually get called. However, when undefined behavior occurs in a program, <em>the entire execution is undefined</em>, so there really would be no point.
+
+If you're curious about undefined behavior, I've <a href="https://blog.knatten.org/2011/11/04/undefined-behaviour-%E2%80%94-worse-than-its-reputation/">written about it before</a>. That article also has links to some really interesting, more in-depth articles about the subject.
+
+
+<em>As usual, the code for this blog post is available on <a href="https://github.com/knatten/blog.knatten.org/blob/master/virtual-destructor/cpp.cpp">GitHub</a>.</em>
+
+<em>If you enjoyed this post, you can <a href="http://blog.knatten.org/feed/">subscribe to my blog</a>, or <a href="http://twitter.com/#!/knatten">follow me on Twitter</a>.</em>
+
