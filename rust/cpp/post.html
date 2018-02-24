@@ -1,6 +1,6 @@
 <em>Warning: Even though most of the code in this post is C++, its main point is about the programming language Rust. I do however find Rust a very interesting language, as it is a systems programming language like C++, just a lot more safe.</em>
 
-One thing that's always hard to get right, is error handling. Many functions can simply return a value, and we know we'll always get a valid value. Many other functions however, can only promise that they'll <em>try</em> to get us a value. Maybe it's connecting to something over the network, reading a file, parsing user input etc.
+One thing that's always hard to get right, is error handling. Many functions can simply return a value, and we know we'll always get a valid value. Many other functions however, can only promise that they'll <em>try</em> to get us a value. Maybe it's connecting to something over the network, reading a file, parsing user input or something else that could potentially fail.
 
 This post examines a few ways to handle errors in C++, and concludes with how it's done in Rust.
 
@@ -9,7 +9,7 @@ Let's first look at a few ways to handle functions that might not succeed in C++
 I've included the output from running this code on my machine in comments. Note however that we in many cases print 0x0 as a pointer value and segfault as the result of de-referencing it. This is just accidental, and the actual behaviour is undefined. I'll get back to that after the examples.
 
 <h3>Return null</h3>
-One common pattern is to return a null pointer if the function failed. Below we have crafted a small function which will successfully return a pointer the first time it's called, but will return null the second time:
+One common pattern is to return a null pointer if the function failed. Below we have crafted a small function which will successfully return a pointer the first time it's called, but will return null for subsequent calls:
 
 <!-- snippetysnip:cpp.cpp:get:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
 
@@ -23,29 +23,42 @@ int* get() {
 
 <!-- snippetysnip_end:cpp.cpp:get -->
 
+Let's define a little convenience function that prints the address and value of a pointer:
 
-And this is how it would be used:
+<!-- snippetysnip:cpp.cpp:print:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
+
+[sourcecode language="cpp"]
+void print(int* i) {
+    cout << i << endl;
+    cout << *i << endl;
+}
+[/sourcecode]
+
+<!-- snippetysnip_end:cpp.cpp:print -->
+
+Given that, this is how <code>get()</code> would be used:
 
 <!-- snippetysnip:cpp.cpp:call_get:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
 
 [sourcecode language="cpp"]
-    int* success = get();
-    cout << success << endl; //0x101d78118
-    cout << *success << endl; //1
+    int* succeeding = get();
+    if (succeeding != nullptr)
+        print(succeeding); //0x1035f5118, 1 
 
-    int* failure = get();
-    cout << failure << endl; //0x0
-    cout << *failure << endl; //segfault!
+    int* failing = get();
+    if (failing != nullptr)
+        print(failing); //Would have been: 0x0, segfault
+
 [/sourcecode]
 
 <!-- snippetysnip_end:cpp.cpp:call_get -->
 
-Note that it's now up to the caller to check whether the returned value is null. This can be easy to forget. And more importantly, there's no way to look at the function signature and know whether this function is guaranteed to return a value, or whether it might return null. In addition to the possibility of forgetting to check for null, this can also lead to us checking for null <em>too often</em>, even in places where we didn't really need to, "just to be sure".
+Note that it's now up to the caller to check whether the returned value is null. This can be easy to forget. And more importantly, there's no way to look at the function signature and know whether this function is guaranteed to return a value, or whether it might return null. In addition to the possibility of forgetting to check for null, a code base where nulls are common can also lead to us checking for null <em>too often</em>, even in places where we didn't really need to, "just to be sure".
 
 <h3>Return in argument</h3>
 Another common pattern is to return an error code or success status from the function, and return the actual value in an argument.
 
-The function below takes a reference to a pointer, and returns whether it succeeded or not. On the first call it updates the pointer to point at the result, and return true. On the second call it doesn't update the pointer, and returns false:
+The function below takes a reference to a pointer which it is meant to update, and returns whether it succeeded or not. On the first call it updates the pointer to point at the result, and returns true. On subsequent calls it doesn't update the pointer, and returns false:
 
 <!-- snippetysnip:cpp.cpp:get_in_argument:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
 
@@ -62,34 +75,37 @@ bool get_in_argument(int*& result) {
 [/sourcecode]
 
 <!-- snippetysnip_end:cpp.cpp:get_in_argument -->
+Compared to <code>int* get()</code>, this function signature has the advantage of clearly communicating that the function might not be able to return a valid pointer. The calling code does however not read as nice in my opinion, as I prefer variables to be properly initialised at their point of declaration.
 
-And this is how it would be used:
+This is how it would be used:
 
 <!-- snippetysnip:cpp.cpp:call_get_in_argument:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
 
 [sourcecode language="cpp"]
-    int* success;
-    bool ok = get_in_argument(success);
-    cout << ok << " " << success << endl; //true 0x10d3ce11c
-    cout << *success << endl; //1
+    int* succeeding;
+    bool ok = get_in_argument(succeeding);
+    if (ok)
+        print(succeeding); //0x10fe1a11c, 1
 
-    int* failure = nullptr;
-    bool ok2 = get_in_argument(failure);
-    cout << ok2 << " " << failure << endl;  //false 0x0
-    cout << *failure << endl; //segfault!
+    int* failing = nullptr;
+    bool ok2 = get_in_argument(failing);
+    if (!ok2)
+        print(failing); //Would have been: 0x0, segfault
+
 [/sourcecode]
 
 <!-- snippetysnip_end:cpp.cpp:call_get_in_argument -->
 
-Compared to <code>int* get()</code>, this function signature has the advantage of clearly communicating that the function might not be able to return a valid pointer. The calling code does however not read as nice in my opinion, as I prefer variables to be properly initialised at their point of declaration.
 
 <h4>Interlude: Null pointers and segfaults</h4>
+Note that I've explicitly set the pointer to null in the above examples, to make it easier to see when we got a value or not. This 
+TODO note that I explicitly set it to null here, might as well have been uninitialized
 When running this program, you'll typically see the behaviour I've outlined in the comments. The un-initialized pointer points to <code>0x0</code>, and dereferencing it results in a segfault. In reality, this behaviour is undefined, and anything could happen. Especially, if the code is a bit more complicated than in these examples, the uninitialized variable could for instance point to a valid memory address, and instead of a segfault, we'd get a valid, but wrong value! This can lead to bugs that are way harder to track down, and don't manifest until way later in the program's execution.
 
 <h3>Exceptions</h3>
 No post about error handling would be complete without mentioning exceptions. 
 
-The function below returns the interesting value through its normal return value, or throws an exception if it fails. On the first call it returns a pointer to the int, on the second call it throws an exception, and never returns at all.
+The function below returns the interesting value through its normal return value, or throws an exception if it fails. On the first call it returns a pointer to the int, on subsequent calls it throws an exception, and never returns at all.
 
 <!-- snippetysnip:cpp.cpp:get_or_throw:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
 
@@ -110,13 +126,15 @@ And this is how it would be used:
 <!-- snippetysnip:cpp.cpp:call_get_or_throw:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
 
 [sourcecode language="cpp"]
-    int* success = get_or_throw();
-    cout << success << endl; //0x101d78118
-    cout << *success << endl; //1
+    try {
+        int* succeeding = get_or_throw();
+        print(succeeding); //0x10756d120, 1
+    } catch (...) {}
 
-    int* failure = get_or_throw(); //exception
-    cout << failure << endl; //never reached
-    cout << *failure << endl; //never reached
+    try {
+        int* failing = get_or_throw(); //exception
+        print(failing); //Would have been: 0x0, segfault
+    } catch (...) {}
 [/sourcecode]
 
 <!-- snippetysnip_end:cpp.cpp:call_get_or_throw -->
@@ -124,6 +142,51 @@ And this is how it would be used:
 This has the advantage that we can't really forget to check for failure and continue executing the program with an uninitialized variable. There is however no way for us to see from the function signature that it might throw an exception, and there's nothing forcing us to actually handle it. We can compile and start this program just fine, and only when the users run it will they get an exception. If we didn't handle it, the program will crash. That's however a lot safer than continuing to run with uninitialized / wrongly initialized memory!
 
 <h3>Optional results</h3>
-Many languages/libraries provide an <code>Optional</code>, <code>Option</code> or <code>Result</code> type, which can either hold a result, or be empty. (In some cases they can also store an error if there was no result.)
+Many languages/libraries provide an <code>Optional</code>, <code>Option</code> or <code>Result</code> type, which can either hold a value, or be empty. Let's look at one very simple example of such a type:
 
-Let's look at one very simple example of such a type:
+<!-- snippetysnip:cpp.cpp:result:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
+
+[sourcecode language="cpp"]
+template <typename T>
+struct Result {
+    bool ok;
+    T* pointer;
+};
+[/sourcecode]
+
+<!-- snippetysnip_end:cpp.cpp:result -->
+
+Here <code>ok</code> tells us whether the result has a value or not, and <code>pointer*</code> holds the result, if any. (This might not be the safest nor most elegant solution, but it's simple and works for the example.)
+
+On the first call, the function below returns a <code>Result&lt;int&gt;</code> with <code>ok == true</code> and a valid pointer. On subsequent calls, it returns a <code>Result&lt;int&gt;</code> with <code>ok == false</code>.
+<!-- snippetysnip:cpp.cpp:get_result:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
+
+[sourcecode language="cpp"]
+Result<int> get_result() {
+    static int i = 0;
+    return i++ == 0
+        ? Result<int>{true, &i}
+        : Result<int>{false, nullptr};
+}
+[/sourcecode]
+
+<!-- snippetysnip_end:cpp.cpp:get_result -->
+
+Here, we can easily see from the function signature that we might not get a valid result back. We also avoid the issue with returning the value in an argument, as we saw earlier. Furthermore, there is no way we can just start using the resulting pointer without being reminded of error handling, as it is wrapped in <code>Result</code> which we need to unpack first.
+
+And this is how it's used:
+<!-- snippetysnip:cpp.cpp:call_get_result:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
+
+[sourcecode language="cpp"]
+    Result<int> succeeding = get_result();
+    if (succeeding.ok)
+        print(succeeding.pointer); //0x1063c1124, 1
+
+    Result<int> failing = get_result();
+    if (!failing.ok)
+        print(failing.pointer); //Would have been: 0x0, segfault
+[/sourcecode]
+
+<!-- snippetysnip_end:cpp.cpp:call_get_result -->
+
+When you have an <code>Optional</code> or <code>Result</code> type, you can also start enforcing a coding standard where you disallow null, and always use a type like that when a value is not guaranteed. Then you also avoid all the "checking for null just to be sure" issues. This is what we've done in the <a href="https://www.fusetools.com/">Fuse Studio</a> code base, which makes for greatly improved readability and peace of mind.
