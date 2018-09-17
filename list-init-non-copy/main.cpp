@@ -29,7 +29,8 @@ using namespace std;
 int main() {
     /*
 //snippetysnip_begin:vector_unique
-    vector<unique_ptr<int>> vu{make_unique<int>(1), make_unique<int>(2)};
+    vector<unique_ptr<int>> vu{
+        make_unique<int>(1), make_unique<int>(2)};
     //error: call to implicitly-deleted copy constructor of unique_ptr
 //snippetysnip_end
     */
@@ -58,4 +59,10 @@ int main() {
     vector<NonCopyable> vn3{NonCopyable(4), NonCopyable(5)}; //error: call to deleted constructor of 'const NonCopyable'
 //snippetysnip_end
     */
+/*
+//snippetysnip_begin:temp_array
+    const Copyable arr[2] = {c1, c2};    
+    vector<Copyable> vc3(initializer_list<Copyable>(arr, arr+2));
+//snippetysnip_end
+*/
 }

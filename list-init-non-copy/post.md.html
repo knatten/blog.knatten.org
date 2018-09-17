@@ -1,82 +1,110 @@
-<p>Have you ever wondered why you can't list-initialize vectors of non-copyable types? This is for instance not possible:</p>
+<p>Have you ever wondered why you can't list-initialize containers of non-copyable types? This is for instance not possible:</p>
 
-<!-- snippetysnip:main.cpp:vector_unique:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
+<!-- snippetysnip:main.cpp:vector_unique:(before='```', after='```') -->
 
-<p>[sourcecode language="cpp"]
-    vector<unique_ptr<int>> vu{make<em>unique<int>(1), make</em>unique<int>(2)};
+<p><code>
+    vector&lt;unique_ptr&lt;int&gt;&gt; vu{make_unique&lt;int&gt;(1), make_unique&lt;int&gt;(2)};
     //error: call to implicitly-deleted copy constructor of unique_ptr
-[/sourcecode]</p>
+</code></p>
 
 <!-- snippetysnip_end:main.cpp:vector_unique -->
 
 <p>If you ever wondered, or if you now are, read on!</p>
 
-<p>Since C++11, you're probably used to intitalizing vectors like this:</p>
+<h3>List-initialization</h3>
 
-<!-- snippetysnip:main.cpp:vector_int:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
+<p>Since C++11, you're probably used to intitalizing containers like this:</p>
 
-<p>[sourcecode language="cpp"]
-    vector<int> vi1{1,2,3};
-    vector<int> vi2 = {1,2,3};
-[/sourcecode]</p>
+<!-- snippetysnip:main.cpp:vector_int:(before='```', after='```') -->
+
+<p><code>
+    vector&lt;int&gt; vi1{1,2,3};
+    vector&lt;int&gt; vi2 = {1,2,3};
+</code></p>
 
 <!-- snippetysnip_end:main.cpp:vector_int -->
 
 <p>This of course also works with user defined types. Let's say you have a class <code>Copyable</code>, then you can for instance do:</p>
 
-<!-- snippetysnip:main.cpp:vector_copyable:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
+<!-- snippetysnip:main.cpp:vector_copyable:(before='```', after='```') -->
 
-<p>[sourcecode language="cpp"]
+<p><code>
     Copyable c1(1);
     Copyable c2(2);
-    vector<Copyable> vc1{c1, c2};
-    vector<Copyable> vc2 = {c1, c2};
-[/sourcecode]</p>
+    vector&lt;Copyable&gt; vc1{c1, c2};
+    vector&lt;Copyable&gt; vc2 = {c1, c2};
+</code></p>
 
 <!-- snippetysnip_end:main.cpp:vector_copyable -->
 
-<p>The <code>Copyable</code> class is reproduced at the end of the post, but in short it has a constructor taking an <code>int</code>, and a <code>default</code>ed copy constructor, move constructor, copy assignment operator and move assignment operator.</p>
+<p>(<code>Copyable</code> is just an arbitrary class which can be copied. It's reproduced at the end of the post.)</p>
 
-<p>Now what happens if we have a non-copyable class <code>NonCopyable</code>? It can also be seen at the end of the post, but is identical to <code>Copyable</code> except that the move constructor and move assignment operators have been <code>delete</code>ed.</p>
+<p>Now what happens if we have a non-copyable class <code>NonCopyable</code>? (<code>NonCopyable</code> is just an arbitrary class which can be moved but not copied, it too is reproduced at the end of the post.)</p>
 
-<!-- snippetysnip:main.cpp:vector_noncopyable:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
+<!-- snippetysnip:main.cpp:vector_noncopyable:(before='```', after='```') -->
 
-<p>[sourcecode language="cpp"]
+<p><code>
     NonCopyable n1(1);
     NonCopyable n2(2);
-    vector<NonCopyable> vn1{n1, n2}; //error: call to deleted constructor of 'const NonCopyable'
-    vector<NonCopyable> vn2 = {n1, n2}; //error: call to deleted constructor of 'const NonCopyable'
-[/sourcecode]</p>
+    vector&lt;NonCopyable&gt; vn1{n1, n2}; //error: call to deleted constructor of 'const NonCopyable'
+    vector&lt;NonCopyable&gt; vn2 = {n1, n2}; //error: call to deleted constructor of 'const NonCopyable'
+</code></p>
 
 <!-- snippetysnip_end:main.cpp:vector_noncopyable -->
 
 <p>Well, <code>n1</code> and <code>n2</code> are lvalues, so no wonder it tries to copy them. What if we turn them into <code>rvalues</code>, either with <code>std::move</code> or by creating temporaries?
-<!-- snippetysnip:main.cpp:vector_noncopyable_move:(before='[sourcecode language="cpp"]', after='[/sourcecode]') --></p>
+<!-- snippetysnip:main.cpp:vector_noncopyable_move:(before='<code>', after='</code>') --></p>
 
-<p>[sourcecode language="cpp"]
-    vector<NonCopyable> vn3{move(n1), move(n2)}; //error: call to deleted constructor of 'const NonCopyable'
-    vector<NonCopyable> vn3{NonCopyable(4), NonCopyable(5)}; //error: call to deleted constructor of 'const NonCopyable'
-[/sourcecode]</p>
+<p><code>
+    vector&lt;NonCopyable&gt; vn3{std::move(n1), std::move(n2)}; //error: call to deleted constructor of 'const NonCopyable'
+    vector&lt;NonCopyable&gt; vn3{NonCopyable(4), NonCopyable(5)}; //error: call to deleted constructor of 'const NonCopyable'
+</code></p>
 
 <!-- snippetysnip_end:main.cpp:vector_noncopyable_move -->
 
-<p>So what's going on here? Let's see what the standard has to say in [dcl.init.list]¶1:</p>
+<p>So what's going on here, why is it trying to copy our rvalues? Let's see what the standard has to say in [dcl.init.list]&para;1:</p>
 
 <blockquote>
   <p><em>List-initialization</em> is initialization of an object or reference from a <em>braced-init-list</em>.</p>
 </blockquote>
 
-<p>A <em>braced-init-list</em> is the <code>{elements, go, here}</code> syntax we saw above. The standard continues:</p>
+<p>A <em>braced-init-list</em> is the <code>{element1, element2, ...}</code> syntax we saw above. The standard continues:</p>
 
 <blockquote>
   <p>Such an initializer is called an initializer list. (...) List-initialization can occur in direct-initialization or copy-initialization contexts.</p>
 </blockquote>
 
-<h4>Appendix: The <code>Copyable</code> and <code>Uncopyable</code> classes:</h4>
+<p>So <em>list-initialization</em> applies both to the forms <code>vector&lt;Copyable&gt; vc1{c1, c2}</code> and <code>vector&lt;Copyable&gt; vc2 = {c1, c2}</code>, which we saw above. The former is an example of <em>direct-initialization</em>, the latter of <em>copy-initialization</em>. In both cases, <code>{c1, c2}</code> is the <em>braced-init-list</em>. </p>
 
-<p><!-- snippetysnip:main.cpp:classes:(before='[sourcecode language="cpp"]', after='[/sourcecode]') --,</p>
+<p>(Note that the word <em>copy-initialization</em> here is not what causes a copy. <em>Copy-initialization</em> simply refers to the form <code>T t = expression</code>, which doesn't necessarily invoke the copy constructor.)</p>
 
-<p>[sourcecode language="cpp"]
+<h3>Creating the <code>initializer_list</code></h3>
+
+<p>Now what exactly happens with the <em>braced</em>init<em>list</em>, and how do its elements end up inside the container we're initializing?</p>
+
+<p>[dcl.init.list]&para;5</p>
+
+<blockquote>
+  <p>An object of type <code>std::initializer_list&lt;E&gt;</code> is constructed from an initializer list as if the implementation generated and materialized (7.4) a prvalue of type "array of<code>N const E</code>", where <code>N</code> is the number of elements in the initializer list. Each element of that array is copy-initialized with the corresponding element of the initializer list, and the<code>std::initializer_list&lt;E&gt;</code> object is constructed to refer to that array.</p>
+</blockquote>
+
+<p>So the initializer_list can be thought of as just a wrapper for a temporary array we initialize with the elements in the braced-init-list. Sort of like if we'd been doing this:</p>
+
+<!-- snippetysnip:main.cpp:temp_array:(before='```', after='```') -->
+
+<p>Show the fact that it only has lvalue reference iterator to access it. Why is that?</p>
+
+<p>As the standard said, it only refers to that array, doesn't own it. Also show the note that it doesn't copy.</p>
+
+<p>Why couldn't it support being moved from? When being passed an il you don't know where it came from. Even if you get it by value, you didn't get a copy of the elements, it's just referring to them. Someone else could be referring to them too, so it wouldn't be safe to move from them.</p>
+
+<p>Finally, nothing prevents you from std::move manually, but it's a bad idea.</p>
+
+<h3>Appendix: The <code>Copyable</code> and <code>Uncopyable</code> classes:</h3>
+
+<!-- snippetysnip:main.cpp:classes:(before='```', after='```') -->
+
+<p>```
 class Copyable {
 public:
     Copyable(int i): i(i){}
@@ -98,9 +126,9 @@ public:
     ~NonCopyable() = default;
     int i;
 };
-[/sourcecode]</p>
+```</p>
 
-<p><!-- snippetysnip_end:main.cpp:classes --,</p>
+<!-- snippetysnip_end:main.cpp:classes -->
 
 <hr>
 
