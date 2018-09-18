@@ -1,0 +1,53 @@
+<p>The other day I was TDD-ing a resource handling class, and needed to add some operators to it. For brevity, let's say then handle class can optionally hold any positive integer, using the sentinel value <code>0</code> to represent it not currently holding a value. Sort of like a <code>unique_ptr</code> can hold any pointer, using <code>nullptr</code> to represent "no pointer".</p>
+
+<p>Here's a minimal implementation:</p>
+
+<p><code>
+class handle {
+public:
+    handle(int value) : value(value){}
+    int value;
+};
+</code></p>
+
+<p>Also, to avoid complicating the issue of a unit testing framework, let's just use <code>assert</code> to test drive the implementation.</p>
+
+<p>First, let's initialize a <code>handle</code> object:</p>
+
+<p><code>
+    handle one(1);
+    assert(one.value == 1);
+</code></p>
+
+<p>Now we want to add an <code>operator bool()</code>, so we can do this:</p>
+
+<p><code>
+    if (one) {do_something_with(one);}
+</code></p>
+
+<p>First, let's add some tests:
+<code>
+    handle zero(0);
+    handle one(1);
+    assert((bool)one == true);
+    assert((bool)zero == false);
+</code></p>
+
+<p>The implementation is simple, just add <code>operator bool()</code> to the <code>handle</code> class:</p>
+
+<p><code>
+class handle {
+public:
+    handle(int value) : value(value){}
+    int value;
+    operator bool() { return value != 0; } // &lt;----
+};
+</code></p>
+
+<p>And our tests pass.</p>
+
+<p>Now we want to compare handles, so we need to add <code>operator &lt;</code>. Let's add the test first, to see that it fails to compile:</p>
+
+<p><code>
+    assert(one &lt; two);
+</code></p>
