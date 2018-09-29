@@ -100,13 +100,13 @@ constexpr const E* begin() const noexcept; // first element
 constexpr const E* end() const noexcept; // one past the last element
 ```
 
-There's no access to the elements as rvalue references, only `const` iterators of pointers to `const`, so we only get lvalues, and we need to copy. Why is there no access as rvalue references?
+There's no access to the elements as rvalue references, only iterators of pointers to `const`, so we only get lvalues, and we need to copy. Why is there no access as rvalue references?
 
-As we saw in the quote above, "the `std::initializer_list<E>` object is constructed to refer to that array." So it only refers to it, and does not own the elements. In particular, this means that if we copy the `initializer_list`, we do _not_ copy the elements, we only copy a reference to them. In fact, this is spelled out in a note [initializer_list.syn]¶1:
+As we saw in the quote above, "the `std::initializer_list<E>` object is constructed to refer to that array." So it only refers to it, and does not own the elements. In particular, this means that if we copy the `initializer_list`, we _do not copy the elements_, we only copy a reference to them. In fact, this is spelled out in a note [initializer_list.syn]¶1:
 
 > Copying an initializer list does not copy the underlying elements.
 
-So even if we get passed the `initializer_list` by value, we do _not_ get a copy of the elements, and it would _not_ be safe to move them out, as another copy of the `initializer_list` could be used again somewhere else. This is why `initializer_list` offers no rvalue reference access.
+So even if we get passed the `initializer_list` by value, we do _not_ get a copy of the elements themselves, and it would _not_ be safe to move them out, as another copy of the `initializer_list` could be used again somewhere else. This is why `initializer_list` offers no rvalue reference access.
 
 ### Summary
 In summary: When you do `T t{elm1, elm2}`, an `initializer_list` is created, referring to those elements. Copying that `initializer_list` does not copy the elements. When a constructor takes an `initializer_list`, it does not know whether it's the only consumer of those elements, so it's not safe to move them out of the `initializer_list`. The only safe way to get the elements out is by copy, so a copy constructor needs to be available.
