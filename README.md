@@ -1,4 +1,4 @@
-Source code examples from blog.knatten.org
+Source code examples from https://blog.knatten.org
 
 ### Notes to self:
 
@@ -8,7 +8,9 @@ _If you enjoyed this post, you can [subscribe to my blog](http://blog.knatten.or
 
 Snippets:
 
+```
 //snippetysnip_begin:NAME
 //snippetysnip_end
 
-<!-- snippetysnip:FILE.cpp:SNIPPET:(before='```', after='```') -->
+<!-- snippetysnip:FILE.cpp:SNIPPET:(before='[sourcecode language="cpp"]', after='[/sourcecode]') -->
+```
