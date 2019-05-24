@@ -54,7 +54,7 @@ First, `int` could actually be the same size as `char`. [basic.fundamental]§6.9
 
 > There are five standard signed integer types : “signed char”, “short int”, “int”, “long int”, and “long long int”. In this list, each type provides at least as much storage as those preceding it in the list.
 
-Note that it says "at least as much storage", it doesn't have to be more. So for instance you could have an eight bit system where both `char` and `int` are eight bits.
+Note that it says "at least as much storage", it doesn't have to be more. So for instance you could have a sixteen bit system where both `char` and `int` are sixteen bits.
 
 Second, `char` can be either signed or unsigned, it's up to the implementation: [basic.fundamental]§6.9.1¶1:
 
@@ -62,7 +62,7 @@ Second, `char` can be either signed or unsigned, it's up to the implementation: 
 
 `int` is signed, so if `char` is also signed, all possible values of `char` will fit in an `int`. However, if `char` is unsigned, and `int` and `char` is the same size, `char` can actually hold larger values than `int`!
 
-Let's see an example. If `char` and `int` are both eight bits, `int` (which is always signed) can hold `[-128, 127]`. If `char` is signed, it can also hold `[-128, 127]`, and any `char` fits in an `int`. However, if `char` is unsigned, it can hold `[0,255]`, half of which fall outside the range of `int`!
+Let's see an example. If `char` and `int` are both sixteen bits, `int` (which is always signed) can hold `[-32768, 32767]`. If `char` is signed, it can also hold `[-32768, 32767]`, and any `char` fits in an `int`. However, if `char` is unsigned, it can hold `[0,65535]`, half of which fall outside the range of `int`!
 
 In the former case, `char`s get promoted to `int`s, but in the latter case, `char`s get promoted to `unsigned int`s before being summed.
 
