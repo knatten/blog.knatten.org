@@ -21,6 +21,8 @@ f(x + y);
 
 <!-- snippetysnip_end:ex1.cpp:call -->
 
+Alternatives:
+
 1. `f(unsigned int)`
 2. `f(int)`
 3. `f(char)`
