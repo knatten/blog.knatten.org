@@ -35,6 +35,7 @@ ostream& operator<<(ostream& os, Message::MessageType type) {
             os << "unknown type";
             break;
     }
+    return os;
 }
 
 ostream& operator<<(ostream& os, const Message& stanza) {
